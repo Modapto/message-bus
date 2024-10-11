@@ -1,0 +1,267 @@
+########################################################
+#          Kafka Cluster Deployment for MODAPTO        #
+#                                                      #
+#     Implemented by: Alkiviadis Aznavouridis          #
+#     Email: a.aznavouridis@atc.gr                     #
+#     Company: ATC                                     #
+#                                                      #
+#     Consists of:                                     #
+#           - 3 Brokers (Using KRaft),                 #
+#           - 3 Controllers (Using KRaft),             #
+#           - Kafka UI                                 #
+#           - Kafka REST Proxy                         #
+#           - Kafka Schema Registry                    #
+#                                                      #
+#     Use .env file to pass the required variables     #
+########################################################
+
+services:
+  # Kafka Controllers Configuration
+  kafka-controller-1:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-controller-1
+    container_name: kafka-controller-1
+    profiles: ["controllers", "all"]
+    env_file: .env
+    ports:
+      - "${KAFKA_CONTROLLER_1_PORT}:9092"
+      - "${KAFKA_CONTROLLER_1_INTERNAL_PORT}:9101"
+    environment:
+      KAFKA_PROCESS_ROLES: "controller"
+      KAFKA_NODE_ID: ${KAFKA_CONTROLLER_1_ID}
+      KAFKA_LISTENERS: "CONTROLLER://kafka-controller-1:29092"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29092,2@kafka-controller-2:29092,3@kafka-controller-3:29092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: unless-stopped
+    networks:
+      - kafka_internal
+      - kafka_external
+    
+    
+  kafka-controller-2:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-controller-2
+    container_name: kafka-controller-2
+    profiles: ["controllers", "all"]
+    env_file: .env
+    depends_on:
+      - kafka-controller-1
+    ports:
+      - "${KAFKA_CONTROLLER_2_PORT}:9092"
+      - "${KAFKA_CONTROLLER_2_INTERNAL_PORT}:9101"
+    environment:
+      KAFKA_PROCESS_ROLES: "controller"
+      KAFKA_NODE_ID: ${KAFKA_CONTROLLER_2_ID}
+      KAFKA_LISTENERS: "CONTROLLER://kafka-controller-2:29092"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29092,2@kafka-controller-2:29092,3@kafka-controller-3:29092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: unless-stopped
+    networks:
+      - kafka_internal
+      - kafka_external
+    
+  kafka-controller-3:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-controller-3
+    container_name: kafka-controller-3
+    profiles: ["controllers", "all"]
+    env_file: .env
+    depends_on:
+      - kafka-controller-1
+      - kafka-controller-2
+    ports:
+      - "${KAFKA_CONTROLLER_3_PORT}:9092"
+      - "${KAFKA_CONTROLLER_3_INTERNAL_PORT}:9101"
+    environment:
+      KAFKA_PROCESS_ROLES: "controller"
+      KAFKA_NODE_ID: ${KAFKA_CONTROLLER_3_ID}
+      KAFKA_LISTENERS: "CONTROLLER://kafka-controller-3:29092"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29092,2@kafka-controller-2:29092,3@kafka-controller-3:29092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: unless-stopped
+    networks:
+      - kafka_internal
+      - kafka_external
+
+  # Kafka Brokers Configuration
+  kafka-broker-1:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-broker-1
+    container_name: kafka-broker-1
+    profiles: ["brokers", "all"]
+    env_file: .env
+    volumes:
+      - ./kafka-data/broker-1:/var/lib/kafka
+    ports:
+      - "${KAFKA_BROKER_1_PORT}:9092"
+      - "${KAFKA_BROKER_1_INTERNAL_PORT}:9101"
+    environment:
+      KAFKA_NODE_ID: ${KAFKA_BROKER_1_ID}
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka-broker-1:29092,EXTERNAL://kafka-broker-1:9092'
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka-broker-1:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${TOPIC_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_LISTENERS: 'INTERNAL://kafka-broker-1:29092,EXTERNAL://kafka-broker-1:9092'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29092,2@kafka-controller-2:29092,3@kafka-controller-3:29092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: unless-stopped
+    networks:
+      - kafka_internal
+      - kafka_external
+
+  kafka-broker-2:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-broker-2
+    container_name: kafka-broker-2
+    profiles: ["brokers", "all"]
+    env_file: .env
+    depends_on:
+      - kafka-broker-1
+    volumes:
+      - ./kafka-data/broker-2:/var/lib/kafka
+    ports:
+      - "${KAFKA_BROKER_2_PORT}:9092"
+      - "${KAFKA_BROKER_2_INTERNAL_PORT}:9101"
+    environment:
+      KAFKA_NODE_ID: ${KAFKA_BROKER_2_ID}
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka-broker-2:29092,EXTERNAL://kafka-broker-2:9092'
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka-broker-2:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${TOPIC_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_LISTENERS: 'INTERNAL://kafka-broker-2:29092,EXTERNAL://kafka-broker-2:9092'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29092,2@kafka-controller-2:29092,3@kafka-controller-3:29092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: unless-stopped
+    networks:
+      - kafka_internal
+      - kafka_external
+
+  kafka-broker-3:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_VERSION}
+    hostname: kafka-broker-3
+    container_name: kafka-broker-3
+    profiles: ["brokers", "all"]
+    env_file: .env
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+    volumes:
+      - ./kafka-data/broker-3:/var/lib/kafka
+    ports:
+      - "${KAFKA_BROKER_3_PORT}:9092"
+      - "${KAFKA_BROKER_3_INTERNAL_PORT}:9101"
+    environment:
+      KAFKA_NODE_ID: ${KAFKA_BROKER_3_ID}
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka-broker-3:29092,EXTERNAL://kafka-broker-3:9092'
+      KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka-broker-3:9092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${TOPIC_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
+      KAFKA_PROCESS_ROLES: 'broker'
+      KAFKA_LISTENERS: 'INTERNAL://kafka-broker-3:29092,EXTERNAL://kafka-broker-3:9092'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29092,2@kafka-controller-2:29092,3@kafka-controller-3:29092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    restart: unless-stopped
+    networks:
+      - kafka_internal
+      - kafka_external
+
+  # Kafka UI Component
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    profiles: ["all"]
+    ports:
+      - 8095:8080
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: MODAPTO Message Bus
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9101
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+    volumes:
+      - ./kafka-ui/config.yaml:/etc/kafkaui/dynamic_config.yaml
+      - ./kafka-data/kafka-ui:/etc/kafkaui/data
+    networks:
+      - kafka_external
+      - kafka_ui
+
+  # Kafka Rest Proxy to handle HTTP Requests
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:7.7.1
+    profiles: ["all"]
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+    ports:
+      - 8082:8082
+    hostname: rest-proxy
+    container_name: rest-proxy
+    environment:
+      KAFKA_REST_HOST_NAME: rest-proxy
+      KAFKA_REST_BOOTSTRAP_SERVERS: ${RP_BOOTSTRAP_SERVERS}
+      KAFKA_REST_LISTENERS: ${RP_LISTENERS}
+      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+    networks:
+      - kafka_external
+      - kafka_ui
+
+  # Kafka image for Schema Registry of Messages
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.7.1
+    hostname: schema-registry
+    profiles: ["all"]
+    depends_on:
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: ${SR_LISTENERS}
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: ${SR_BOOTSTRAP_SERVERS}
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+    volumes:
+      - ./kafka-data/schema-registry:/var/lib/schema-registry
+    networks:
+      - kafka_external
+      - kafka_ui
+
+networks:
+  kafka_internal:
+    driver: bridge
+  kafka_external:
+    driver: bridge
+  kafka_ui:
+    driver: bridge

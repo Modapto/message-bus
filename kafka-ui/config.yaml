@@ -1,0 +1,18 @@
+auth:
+  type: DISABLED
+kafka:
+  clusters:
+  - bootstrapServers: kafka-broker-1:29092,kafka-broker-2:29092,kafka-broker-3:29092
+    metrics:
+      port: 9101
+      type: JMX
+    name: MODAPTO Message Bus
+    properties: {}
+    readOnly: false
+    schemaRegistry: http://schema-registry:8081
+    schemaRegistryAuth:
+      password: {password}
+      username: {username}
+rbac:
+  roles: []
+webclient: {}
