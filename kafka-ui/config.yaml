@@ -1,5 +1,7 @@
 auth:
-  type: DISABLED
+  type: LOGIN_FORM
+  username: {username}
+  password: {password}
 kafka:
   clusters:
   - bootstrapServers: kafka-broker-1:29092,kafka-broker-2:29092,kafka-broker-3:29092
