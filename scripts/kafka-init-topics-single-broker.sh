@@ -27,9 +27,9 @@ for topic in "${topics[@]}"; do
         if kafka-topics --create \
             --topic "$topic" \
             --partitions 6 \
-            --replication-factor 3 \
+            --replication-factor 1 \
             --if-not-exists \
-            --bootstrap-server kafka-broker-1:29092; then
+            --bootstrap-server kafka:29092; then
             echo "Successfully created topic: $topic"           
             echo "----------------------------------------------"
             break

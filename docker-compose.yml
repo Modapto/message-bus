@@ -13,7 +13,7 @@
 #           - Kafka Schema Registry                    #
 #           - Kafka Topics Setup                       #
 #                                                      #
-#     Use .env file to pass the required variables     #
+#     Use multi-brokers.env file to pass the required variables     #
 ########################################################
 
 services:
@@ -23,7 +23,7 @@ services:
     hostname: kafka-controller-1
     container_name: kafka-controller-1
     profiles: ["controllers", "setup", "all"]
-    env_file: .env
+    env_file: multi-brokers.env
     ports:
       - "${KAFKA_CONTROLLER_1_PORT}:9092"
       - "${KAFKA_CONTROLLER_1_INTERNAL_PORT}:9101"
@@ -47,7 +47,7 @@ services:
     hostname: kafka-controller-2
     container_name: kafka-controller-2
     profiles: ["controllers", "setup", "all"]
-    env_file: .env
+    env_file: multi-brokers.env
     depends_on:
       - kafka-controller-1
     ports:
@@ -72,7 +72,7 @@ services:
     hostname: kafka-controller-3
     container_name: kafka-controller-3
     profiles: ["controllers", "setup", "all"]
-    env_file: .env
+    env_file: multi-brokers.env
     depends_on:
       - kafka-controller-1
       - kafka-controller-2
@@ -99,18 +99,18 @@ services:
     hostname: kafka-broker-1
     container_name: kafka-broker-1
     profiles: ["brokers", "setup", "all"]
-    env_file: .env
+    env_file: multi-brokers.env
     depends_on:
       - kafka-controller-1
       - kafka-controller-2
       - kafka-controller-3
     volumes:
-      - ./kafka-data/broker-1/data:/var/lib/kafka/data # Main directory for Kafka Data
-      - ./kafka-data/broker-1/config:/etc/kafka/ # Custom Kafka Config
-      - ./kafka-data/broker-1/schemas:/etc/schema-registry/ # Schema Registry Data
+      - kafka-data-1:/var/lib/kafka/data # Main directory for Kafka Data
+      - kafka-config-1:/etc/kafka  # Custom Kafka Config
+      - kafka-schemas-1:/etc/schema-registry  # Schema Registry Data
     ports:
       - "${KAFKA_BROKER_1_PORT}:9092"
-      - "${KAFKA_BROKER_1_INTERNAL_PORT}:9101"
+      - "${KAFKA_BROKER_1_METRICS_PORT}:9101"
     environment:
       KAFKA_NODE_ID: ${KAFKA_BROKER_1_ID}
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
@@ -119,11 +119,11 @@ services:
       KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka-broker-1:9092'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${TOPIC_REPLICATION_FACTOR}
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
       KAFKA_PROCESS_ROLES: 'broker'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka-broker-1:29092,EXTERNAL://kafka-broker-1:${KAFKA_BROKER_1_PORT}'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-broker-1:29092,EXTERNAL://0.0.0.0:${KAFKA_BROKER_1_PORT}'
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29093,2@kafka-controller-2:29093,3@kafka-controller-3:29093"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
@@ -144,17 +144,17 @@ services:
     hostname: kafka-broker-2
     container_name: kafka-broker-2
     profiles: ["brokers", "all", "setup"]
-    env_file: .env
+    env_file: multi-brokers.env
     depends_on:
       kafka-broker-1:
         condition: service_healthy
     volumes:
-      - ./kafka-data/broker-2/data:/var/lib/kafka/data # Main directory for Kafka Data
-      - ./kafka-data/broker-2/config:/etc/kafka/ # Custom Kafka Config
-      - ./kafka-data/broker-2/schemas:/etc/schema-registry/ # Schema Registry Data
+      - kafka-data-2:/var/lib/kafka/data
+      - kafka-config-2:/etc/kafka
+      - kafka-schemas-2:/etc/schema-registry
     ports:
       - "${KAFKA_BROKER_2_PORT}:9092"
-      - "${KAFKA_BROKER_2_INTERNAL_PORT}:9101"
+      - "${KAFKA_BROKER_2_METRICS_PORT}:9101"
     environment:
       KAFKA_NODE_ID: ${KAFKA_BROKER_2_ID}
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
@@ -163,11 +163,11 @@ services:
       KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka-broker-2:9092'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${TOPIC_REPLICATION_FACTOR}
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
       KAFKA_PROCESS_ROLES: 'broker'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka-broker-2:29092,EXTERNAL://kafka-broker-2:${KAFKA_BROKER_2_PORT}'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-broker-2:29092,EXTERNAL://0.0.0.0:${KAFKA_BROKER_2_PORT}'
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29093,2@kafka-controller-2:29093,3@kafka-controller-3:29093"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
@@ -188,19 +188,19 @@ services:
     hostname: kafka-broker-3
     container_name: kafka-broker-3
     profiles: ["brokers", "all", "setup"]
-    env_file: .env
+    env_file: multi-brokers.env
     depends_on:
       kafka-broker-1:
         condition: service_healthy
       kafka-broker-2:
         condition: service_healthy
     volumes:
-      - ./kafka-data/broker-3/data:/var/lib/kafka/data # Main directory for Kafka Data
-      - ./kafka-data/broker-3/config:/etc/kafka/ # Custom Kafka Config
-      - ./kafka-data/broker-3/schemas:/etc/schema-registry/ # Schema Registry Data
+      - kafka-data-3:/var/lib/kafka/data
+      - kafka-config-3:/etc/kafka
+      - kafka-schemas-3:/etc/schema-registry
     ports:
       - "${KAFKA_BROKER_3_PORT}:9092"
-      - "${KAFKA_BROKER_3_INTERNAL_PORT}:9101"
+      - "${KAFKA_BROKER_3_METRICS_PORT}:9101"
     environment:
       KAFKA_NODE_ID: ${KAFKA_BROKER_3_ID}
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
@@ -209,11 +209,11 @@ services:
       KAFKA_CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: 'kafka-broker-3:9092'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${TOPIC_REPLICATION_FACTOR}
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME}
       KAFKA_PROCESS_ROLES: 'broker'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka-broker-3:29092,EXTERNAL://kafka-broker-3:${KAFKA_BROKER_3_PORT}'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-broker-3:29092,EXTERNAL://0.0.0.0:${KAFKA_BROKER_3_PORT}'
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-controller-1:29093,2@kafka-controller-2:29093,3@kafka-controller-3:29093"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
@@ -322,7 +322,7 @@ services:
     hostname: kafka-setup
     container_name: kafka-setup
     profiles: ["setup", "all"]
-    env_file: .env
+    env_file: multi-brokers.env
     depends_on:
       kafka-broker-1:
         condition: service_healthy
@@ -349,6 +349,16 @@ services:
       - kafka-internal
       - kafka-external
 
+volumes:
+  kafka-data-1:
+  kafka-config-1:
+  kafka-schemas-1:
+  kafka-data-2:
+  kafka-config-2:
+  kafka-schemas-2:
+  kafka-data-3:
+  kafka-config-3:
+  kafka-schemas-3:
 
 networks:
   kafka-internal:
